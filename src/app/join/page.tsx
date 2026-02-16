@@ -33,15 +33,24 @@ export default function JoinPage() {
     }
 
     setLoading(true);
-    const result = await joinRoom(roomCode.trim().toUpperCase(), name.trim());
+    try {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Network timeout - try again")), 15000)
+      );
+      
+      const result = await Promise.race([joinRoom(roomCode.trim().toUpperCase(), name.trim()), timeoutPromise]) as any;
 
-    if (result.success && result.playerId) {
-      sessionStorage.setItem(`player_${roomCode.trim().toUpperCase()}`, result.playerId);
-      sessionStorage.setItem(`player_number_${roomCode.trim().toUpperCase()}`, number);
-      sessionStorage.setItem(`player_name_${roomCode.trim().toUpperCase()}`, name.trim());
-      router.push(`/room/${roomCode.trim().toUpperCase()}?playerId=${result.playerId}&number=${num}`);
-    } else {
-      setError(result.error || "Failed to join room");
+      if (result.success && result.playerId) {
+        sessionStorage.setItem(`player_${roomCode.trim().toUpperCase()}`, result.playerId);
+        sessionStorage.setItem(`player_number_${roomCode.trim().toUpperCase()}`, number);
+        sessionStorage.setItem(`player_name_${roomCode.trim().toUpperCase()}`, name.trim());
+        router.push(`/room/${roomCode.trim().toUpperCase()}?playerId=${result.playerId}&number=${num}`);
+      } else {
+        setError(result.error || "Failed to join room");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.message || "Network error - check your connection");
       setLoading(false);
     }
   };

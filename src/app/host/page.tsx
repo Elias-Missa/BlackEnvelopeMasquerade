@@ -15,13 +15,22 @@ export default function HostPage() {
     setLoading(true);
     setError("");
 
-    const result = await createRoom();
+    try {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Network timeout - try again")), 15000)
+      );
+      
+      const result = await Promise.race([createRoom(), timeoutPromise]) as any;
 
-    if (result.success && result.code && result.hostToken) {
-      sessionStorage.setItem(`host_${result.code}`, result.hostToken);
-      router.push(`/room/${result.code}`);
-    } else {
-      setError(result.error || "Failed to create room");
+      if (result.success && result.code && result.hostToken) {
+        sessionStorage.setItem(`host_${result.code}`, result.hostToken);
+        router.push(`/room/${result.code}`);
+      } else {
+        setError(result.error || "Failed to create room");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.message || "Network error - check your connection");
       setLoading(false);
     }
   };
