@@ -7,4 +7,9 @@ const nextConfig = {
   },
 };
 
+// Remove allowedOrigins in production to allow all origins
+if (process.env.NODE_ENV === "production") {
+  nextConfig.experimental = {};
+}
+
 module.exports = nextConfig;
