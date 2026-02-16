@@ -31,7 +31,7 @@ export async function createRoom(): Promise<{
     let attempts = 0;
 
     while (attempts < 10) {
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await supabaseAdmin()
         .from("rooms")
         .select("id")
         .eq("code", code)
@@ -44,7 +44,7 @@ export async function createRoom(): Promise<{
 
     const hostToken = generateHostToken();
 
-    const { error } = await supabaseAdmin.from("rooms").insert({
+    const { error } = await supabaseAdmin().from("rooms").insert({
       code,
       status: "waiting",
       host_token: hostToken,
@@ -81,7 +81,7 @@ export async function joinRoom(
       return { success: false, error: "Name must be 1-30 characters" };
     }
 
-    const { data: room, error: roomError } = await supabaseAdmin
+    const { data: room, error: roomError } = await supabaseAdmin()
       .from("rooms")
       .select("id, status")
       .eq("code", trimmedCode)
@@ -95,7 +95,7 @@ export async function joinRoom(
       return { success: false, error: "Game already ended" };
     }
 
-    const { data: existingPlayer } = await supabaseAdmin
+    const { data: existingPlayer } = await supabaseAdmin()
       .from("players")
       .select("id")
       .eq("room_id", room.id)
@@ -106,7 +106,7 @@ export async function joinRoom(
       return { success: false, error: "Name already taken in this room" };
     }
 
-    const { data: player, error: playerError } = await supabaseAdmin
+    const { data: player, error: playerError } = await supabaseAdmin()
       .from("players")
       .insert({
         room_id: room.id,
@@ -137,7 +137,7 @@ export async function submitNumber(
       return { success: false, error: "Number must be between 1 and 100" };
     }
 
-    const { data: player } = await supabaseAdmin
+    const { data: player } = await supabaseAdmin()
       .from("players")
       .select("id, number")
       .eq("id", playerId)
@@ -151,7 +151,7 @@ export async function submitNumber(
       return { success: false, error: "Already submitted" };
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdmin()
       .from("players")
       .update({ number })
       .eq("id", playerId);
@@ -171,7 +171,7 @@ export async function revealResults(
   hostToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: room } = await supabaseAdmin
+    const { data: room } = await supabaseAdmin()
       .from("rooms")
       .select("id, host_token, status")
       .eq("code", roomCode)
@@ -189,7 +189,7 @@ export async function revealResults(
       return { success: false, error: "Already revealed" };
     }
 
-    const { data: players } = await supabaseAdmin
+    const { data: players } = await supabaseAdmin()
       .from("players")
       .select("*")
       .eq("room_id", room.id);
@@ -203,7 +203,7 @@ export async function revealResults(
       return { success: false, error: "Not all players have submitted" };
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdmin()
       .from("rooms")
       .update({ status: "revealed" })
       .eq("id", room.id);
@@ -223,7 +223,7 @@ export async function restartGame(
   hostToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: room } = await supabaseAdmin
+    const { data: room } = await supabaseAdmin()
       .from("rooms")
       .select("id, host_token")
       .eq("code", roomCode)
@@ -238,10 +238,10 @@ export async function restartGame(
     }
 
     // Delete all players from the room
-    await supabaseAdmin.from("players").delete().eq("room_id", room.id);
+    await supabaseAdmin().from("players").delete().eq("room_id", room.id);
 
     // Reset room status to waiting
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdmin()
       .from("rooms")
       .update({ status: "waiting" })
       .eq("id", room.id);
@@ -257,7 +257,7 @@ export async function restartGame(
 }
 
 export async function getRoomData(roomCode: string) {
-  const { data: room } = await supabaseAdmin
+  const { data: room } = await supabaseAdmin()
     .from("rooms")
     .select("*")
     .eq("code", roomCode)
@@ -265,7 +265,7 @@ export async function getRoomData(roomCode: string) {
 
   if (!room) return null;
 
-  const { data: players } = await supabaseAdmin
+  const { data: players } = await supabaseAdmin()
     .from("players")
     .select("*")
     .eq("room_id", room.id)
