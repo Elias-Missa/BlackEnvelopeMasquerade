@@ -1,31 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import GoldDust from "@/components/GoldDust";
 
 const names = [
-  "Alexander",
-  "Seraphina", 
-  "Maximilian",
-  "Victoria",
-  "Nathaniel",
-  "Cordelia",
-  "Dominic",
-  "Serena",
-  "Julian",
-  "Aurora",
-  "Vincent",
-  "Ophelia"
+  "Alexander", "Seraphina", "Maximilian", "Victoria",
+  "Nathaniel", "Cordelia", "Dominic", "Serena",
+  "Julian", "Aurora", "Vincent", "Ophelia"
 ];
 
 export default function MatchmakerPage() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [availableNames, setAvailableNames] = useState(names.slice(0, 12)); // Always start with 12 names
+  const [availableNames, setAvailableNames] = useState(names.slice(0, 12));
   const [removedNames, setRemovedNames] = useState<string[]>([]);
+
+  // Generate the CSS conic-gradient string for hard-edged segments
+  const wheelBackground = useMemo(() => {
+    if (availableNames.length === 0) return "#0b0b0f";
+    const segmentSize = 360 / availableNames.length;
+    const stops = availableNames.map((_, i) => {
+      const color = i % 2 === 0 ? '#D4AF37' : '#1a1a22';
+      return `${color} ${i * segmentSize}deg ${(i + 1) * segmentSize}deg`;
+    });
+    return `conic-gradient(from 0deg, ${stops.join(', ')})`;
+  }, [availableNames]);
 
   const spinWheel = () => {
     if (isSpinning || availableNames.length === 0) return;
@@ -33,16 +35,14 @@ export default function MatchmakerPage() {
     setIsSpinning(true);
     setSelectedName(null);
     
-    const spins = Math.floor(Math.random() * 5) + 5;
-    const randomIndex = Math.floor(Math.random() * availableNames.length);
     const segmentAngle = 360 / availableNames.length;
+    const randomIndex = Math.floor(Math.random() * availableNames.length);
     
-    // Calculate the correct angle so the pointer lands on the selected name
-    // The pointer is at the top (0 degrees), so we need to rotate so the selected name is at the top
-    // Names are positioned clockwise starting from the top
-    const nameAngle = randomIndex * segmentAngle;
-    const targetAngle = 360 - nameAngle; // Rotate counter-clockwise to put the name at the top
-    const totalRotation = spins * 360 + targetAngle;
+    // Calculate the angle to put the center of the segment at the top (0°)
+    // We subtract from 360 to rotate counter-clockwise
+    const targetMidPoint = (randomIndex * segmentAngle) + (segmentAngle / 2);
+    const extraSpins = (Math.floor(Math.random() * 5) + 5) * 360;
+    const totalRotation = extraSpins + (360 - targetMidPoint);
 
     setRotation(totalRotation);
 
@@ -51,14 +51,13 @@ export default function MatchmakerPage() {
       const selected = availableNames[randomIndex];
       setSelectedName(selected);
       
-      // Remove the selected name from available names
       setAvailableNames(prev => prev.filter((_, index) => index !== randomIndex));
       setRemovedNames(prev => [...prev, selected]);
     }, 4000);
   };
 
   const restartWheel = () => {
-    setAvailableNames(names.slice(0, 12)); // Always reset to 12 names
+    setAvailableNames(names.slice(0, 12));
     setRemovedNames([]);
     setSelectedName(null);
     setRotation(0);
@@ -86,46 +85,47 @@ export default function MatchmakerPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
       >
-        <motion.h1
-          className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-gold leading-tight tracking-tight mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.3 }}
-        >
+        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-gold mb-12">
           The Matchmaker
-        </motion.h1>
+        </h1>
 
         <div className="relative flex flex-col items-center">
           <div className="relative w-80 h-80 sm:w-96 sm:h-96">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gold/20 to-gold/10 blur-xl"></div>
-            
+            {/* Pointer at the very top */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-30">
+              <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-white drop-shadow-xl" />
+            </div>
+
+            {/* The actual spinning wheel */}
             <motion.div
-              className="relative w-full h-full rounded-full border-8 border-gold shadow-[0_0_60px_rgba(212,175,55,0.4)] overflow-hidden"
+              className="relative w-full h-full rounded-full border-8 border-gold shadow-[0_0_60px_rgba(212,175,55,0.4)]"
               style={{
-                background: availableNames.length > 0 ? 
-                  `conic-gradient(from 0deg, ${availableNames.map((_, index) => 
-                    index % 2 === 0 ? '#D4AF37' : '#0b0b0f'
-                  ).join(' ')} 0deg 360deg)` : 
-                  '#0b0b0f',
-                transform: `rotate(${rotation}deg)`,
-                transition: isSpinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none",
+                background: wheelBackground,
+                rotate: `${rotation}deg` 
+              }}
+              transition={{
+                duration: isSpinning ? 4 : 0,
+                ease: [0.17, 0.67, 0.12, 0.99]
               }}
             >
               {availableNames.map((name, index) => {
-                const angle = (index * 360) / availableNames.length + 360 / availableNames.length / 2;
+                const segmentSize = 360 / availableNames.length;
+                // Position text at the center of the slice
+                // Subtract 90 to convert Math.cos/sin (starting at 3 o'clock) 
+                // to our wheel (starting at 12 o'clock)
+                const angle = (index * segmentSize) + (segmentSize / 2) - 90;
                 const radian = (angle * Math.PI) / 180;
-                const x = 50 + 40 * Math.cos(radian);
-                const y = 50 + 40 * Math.sin(radian);
+                const x = 50 + 35 * Math.cos(radian);
+                const y = 50 + 35 * Math.sin(radian);
                 
                 return (
                   <div
-                    key={index}
-                    className="absolute text-gold font-serif text-sm font-bold"
+                    key={`${name}-${availableNames.length}`}
+                    className="absolute text-white font-serif text-xs sm:text-sm font-bold pointer-events-none"
                     style={{
                       left: `${x}%`,
                       top: `${y}%`,
-                      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-                      transition: isSpinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none",
+                      transform: `translate(-50%, -50%) rotate(${angle + 90}deg)`,
                     }}
                   >
                     {name}
@@ -133,64 +133,35 @@ export default function MatchmakerPage() {
                 );
               })}
             </motion.div>
-
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2">
-              <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-gold drop-shadow-[0_4px_8px_rgba(212,175,55,0.4)]"></div>
-            </div>
           </div>
 
           <div className="flex gap-4 mt-8">
             <motion.button
               onClick={spinWheel}
               disabled={isSpinning || availableNames.length === 0}
-              className="px-8 py-4 bg-transparent border border-gold text-gold font-sans font-medium text-base rounded-sm transition-all duration-300 hover:bg-gold/10 hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: (isSpinning || availableNames.length === 0) ? 1 : 1.05 }}
-              whileTap={{ scale: (isSpinning || availableNames.length === 0) ? 1 : 0.95 }}
+              className="px-8 py-4 border border-gold text-gold font-sans rounded-sm hover:bg-gold/10 disabled:opacity-50"
+              whileTap={{ scale: 0.95 }}
             >
-              {isSpinning ? "Spinning..." : availableNames.length === 0 ? "No More Names" : "Spin the Wheel"}
+              {isSpinning ? "The wheel turns..." : "Spin the Wheel"}
             </motion.button>
 
-            <motion.button
+            <button
               onClick={restartWheel}
               disabled={isSpinning}
-              className="px-8 py-4 bg-transparent border border-gold/60 text-gold/80 font-sans font-medium text-base rounded-sm transition-all duration-300 hover:border-gold hover:text-gold hover:bg-gold/10 hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isSpinning ? 1 : 1.05 }}
-              whileTap={{ scale: isSpinning ? 1 : 0.95 }}
+              className="px-8 py-4 border border-gold/40 text-gold/60 font-sans rounded-sm hover:border-gold hover:text-gold disabled:opacity-50"
             >
-              Restart Wheel
-            </motion.button>
+              Reset
+            </button>
           </div>
 
-          {selectedName && (
+          {selectedName && !isSpinning && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mt-8 text-center"
+              className="mt-8"
             >
-              <p className="text-gold/60 font-serif text-lg mb-2">The wheel has chosen:</p>
-              <p className="font-serif text-3xl sm:text-4xl font-bold text-gold">{selectedName}</p>
-            </motion.div>
-          )}
-
-          {removedNames.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mt-6 text-center max-w-md"
-            >
-              <p className="text-gold/40 font-serif text-sm mb-2">Already chosen:</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {removedNames.map((name, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 bg-gold/10 border border-gold/30 text-gold/60 font-serif text-xs rounded-sm"
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
+              <p className="text-gold/60 font-serif italic">Destiny has chosen:</p>
+              <p className="font-serif text-4xl font-bold text-gold">{selectedName}</p>
             </motion.div>
           )}
         </div>
